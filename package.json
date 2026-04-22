@@ -1,16 +1,12 @@
 {
   "name": "mental-cert",
   "version": "1.0.0",
-  "description": "Mental Health Certificate Generator",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "license": "ISC",
   "dependencies": {
     "cors": "^2.8.6",
-    "express": "^4.19.2",
-    "puppeteer-core": "10.4.0",
-    "chrome-aws-lambda": "10.1.0"
+    "express": "^4.19.2"
   }
 }
