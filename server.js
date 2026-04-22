@@ -1,4 +1,3 @@
-process.env.PUPPETEER_EXECUTABLE_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || null;
 const express = require("express");
 const puppeteer = require("puppeteer");
 const cors = require("cors");
