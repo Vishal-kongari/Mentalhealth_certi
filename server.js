@@ -1,3 +1,4 @@
+process.env.PUPPETEER_EXECUTABLE_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || null;
 const express = require("express");
 const puppeteer = require("puppeteer");
 const cors = require("cors");
@@ -27,7 +28,13 @@ app.post("/generate-certificate", async (req, res) => {
          **************************************************************/
         const browser = await puppeteer.launch({
             headless: true,
-            args: ["--no-sandbox", "--disable-setuid-sandbox"]
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--single-process"
+            ]
         });
 
         const page = await browser.newPage();
