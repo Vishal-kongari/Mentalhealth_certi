@@ -1,5 +1,6 @@
 const express = require("express");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
+const chromium = require("chrome-aws-lambda");
 const cors = require("cors");
 
 const app = express();
@@ -7,48 +8,42 @@ app.use(express.json());
 app.use(cors());
 
 /**************************************************************
- * ✅ HEALTH CHECK ROUTE
+ * ✅ HEALTH CHECK
  **************************************************************/
 app.get("/", (req, res) => {
-    /*adding corect code*/
-
     res.send("🚀 Mental Certificate API is running");
 });
 
 /**************************************************************
- * 🎯 MAIN API: GENERATE CERTIFICATE IMAGE
+ * 🎯 GENERATE CERTIFICATE
  **************************************************************/
 app.post("/generate-certificate", async (req, res) => {
+    let browser = null;
+
     try {
         const data = req.body;
-
         console.log("📥 Received Data:", data);
 
         /**************************************************************
-         * 🚀 LAUNCH BROWSER (RENDER SAFE)
+         * 🚀 LAUNCH BROWSER (CLOUD SAFE)
          **************************************************************/
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--single-process"
-            ]
+        browser = await puppeteer.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath,
+            headless: chromium.headless
         });
 
         const page = await browser.newPage();
 
         /**************************************************************
-         * 🎨 CERTIFICATE HTML
+         * 🎨 CERTIFICATE UI
          **************************************************************/
         const html = `
     <html>
     <head>
       <style>
         body {
-          font-family: Arial, sans-serif;
+          font-family: Arial;
           width: 900px;
           padding: 40px;
           background: linear-gradient(135deg, #eef2ff, #f0fdf4);
@@ -124,7 +119,7 @@ app.post("/generate-certificate", async (req, res) => {
 
         <div class="suggestions">
           <b>Suggestions:</b>
-          <p>${data.suggestions.replace(/\n/g, "<br>")}</p>
+          <p>${data.suggestions.replace(/\\n/g, "<br>")}</p>
         </div>
       </div>
     </body>
@@ -145,12 +140,18 @@ app.post("/generate-certificate", async (req, res) => {
 
     } catch (err) {
         console.error("❌ ERROR:", err);
-        res.status(500).json({ error: "Failed to generate certificate" });
+
+        if (browser) await browser.close();
+
+        res.status(500).json({
+            error: "Failed to generate certificate",
+            details: err.message
+        });
     }
 });
 
 /**************************************************************
- * 🚀 START SERVER (RENDER COMPATIBLE)
+ * 🚀 START SERVER
  **************************************************************/
 const PORT = process.env.PORT || 3000;
 
