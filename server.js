@@ -1,7 +1,8 @@
 const express = require("express");
-const puppeteer = require("puppeteer-core");
-const chromium = require("chrome-aws-lambda");
 const cors = require("cors");
+
+// ✅ Ensure fetch works (Node 18+ safe)
+const fetch = global.fetch;
 
 const app = express();
 app.use(express.json());
@@ -18,25 +19,12 @@ app.get("/", (req, res) => {
  * 🎯 GENERATE CERTIFICATE
  **************************************************************/
 app.post("/generate-certificate", async (req, res) => {
-    let browser = null;
-
     try {
         const data = req.body;
         console.log("📥 Received Data:", data);
 
         /**************************************************************
-         * 🚀 LAUNCH BROWSER (CLOUD SAFE)
-         **************************************************************/
-        browser = await puppeteer.launch({
-            args: chromium.args,
-            executablePath: await chromium.executablePath,
-            headless: chromium.headless
-        });
-
-        const page = await browser.newPage();
-
-        /**************************************************************
-         * 🎨 CERTIFICATE UI
+         * 🎨 CERTIFICATE HTML
          **************************************************************/
         const html = `
     <html>
@@ -126,22 +114,39 @@ app.post("/generate-certificate", async (req, res) => {
     </html>
     `;
 
-        await page.setContent(html, { waitUntil: "networkidle0" });
-
-        const image = await page.screenshot({
-            type: "png",
-            encoding: "base64",
-            fullPage: true
+        /**************************************************************
+         * 🔥 CALL HTML → IMAGE API
+         **************************************************************/
+        const apiResponse = await fetch("https://htmlcsstoimage.com/demo_run", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ html })
         });
 
-        await browser.close();
+        const result = await apiResponse.json();
+        console.log("🧪 Image API Result:", result);
 
-        res.json({ image });
+        if (!result.url) {
+            throw new Error("Image API failed or rate limited");
+        }
+
+        /**************************************************************
+         * 🔁 CONVERT IMAGE TO BASE64
+         **************************************************************/
+        const imageRes = await fetch(result.url);
+        const buffer = await imageRes.arrayBuffer();
+
+        const base64Image = Buffer.from(buffer).toString("base64");
+
+        /**************************************************************
+         * 📤 SEND RESPONSE
+         **************************************************************/
+        res.json({ image: base64Image });
 
     } catch (err) {
         console.error("❌ ERROR:", err);
-
-        if (browser) await browser.close();
 
         res.status(500).json({
             error: "Failed to generate certificate",
