@@ -6,7 +6,7 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "canvas": "^2.11.2",
+    "canvas": "^3.2.3",
     "cors": "^2.8.6",
     "express": "^4.19.2"
   }
