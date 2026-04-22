@@ -1,8 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-
-// ✅ Ensure fetch works (Node 18+ safe)
-const fetch = global.fetch;
+const { createCanvas } = require("canvas");
 
 const app = express();
 app.use(express.json());
@@ -12,146 +10,98 @@ app.use(cors());
  * ✅ HEALTH CHECK
  **************************************************************/
 app.get("/", (req, res) => {
-    res.send("🚀 Mental Certificate API is running");
+    res.send("🚀 Mental Certificate API is running (Canvas Mode)");
 });
 
 /**************************************************************
- * 🎯 GENERATE CERTIFICATE
+ * 🎯 GENERATE CERTIFICATE USING CANVAS
  **************************************************************/
 app.post("/generate-certificate", async (req, res) => {
     try {
         const data = req.body;
-        console.log("📥 Received Data:", data);
+
+        console.log("📥 Received:", data);
 
         /**************************************************************
-         * 🎨 CERTIFICATE HTML
+         * 🎨 CREATE CANVAS
          **************************************************************/
-        const html = `
-    <html>
-    <head>
-      <style>
-        body {
-          font-family: Arial;
-          width: 900px;
-          padding: 40px;
-          background: linear-gradient(135deg, #eef2ff, #f0fdf4);
-        }
-
-        .container {
-          background: white;
-          border-radius: 20px;
-          padding: 30px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-
-        .title {
-          text-align: center;
-          font-size: 28px;
-          font-weight: bold;
-        }
-
-        .name {
-          text-align: center;
-          margin: 20px 0;
-          font-size: 18px;
-        }
-
-        .grid {
-          display: flex;
-          gap: 20px;
-          margin-top: 20px;
-        }
-
-        .card {
-          flex: 1;
-          padding: 20px;
-          background: #f3f4f6;
-          border-radius: 12px;
-          text-align: center;
-        }
-
-        .level {
-          margin-top: 20px;
-          text-align: center;
-          font-size: 22px;
-          font-weight: bold;
-          color: ${data.level === "Healthy"
-                ? "green"
-                : data.level === "Mild"
-                    ? "orange"
-                    : "red"
-            };
-        }
-
-        .suggestions {
-          margin-top: 20px;
-        }
-      </style>
-    </head>
-
-    <body>
-      <div class="container">
-        <div class="title">Certificate of Mental Wellness</div>
-
-        <div class="name">
-          This certifies that <b>${data.name}</b>
-        </div>
-
-        <div class="grid">
-          <div class="card">Mental<br><b>${data.mental}%</b></div>
-          <div class="card">Stress<br><b>${data.stress}%</b></div>
-          <div class="card">Physical<br><b>${data.physical}%</b></div>
-        </div>
-
-        <div class="level">${data.level}</div>
-
-        <div class="suggestions">
-          <b>Suggestions:</b>
-          <p>${data.suggestions.replace(/\\n/g, "<br>")}</p>
-        </div>
-      </div>
-    </body>
-    </html>
-    `;
+        const width = 1000;
+        const height = 600;
+        const canvas = createCanvas(width, height);
+        const ctx = canvas.getContext("2d");
 
         /**************************************************************
-         * 🔥 CALL HTML → IMAGE API
+         * 🌈 BACKGROUND
          **************************************************************/
-        const apiResponse = await fetch("https://htmlcsstoimage.com/demo_run", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ html })
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, "#eef2ff");
+        gradient.addColorStop(1, "#f0fdf4");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        /**************************************************************
+         * 📦 WHITE CARD
+         **************************************************************/
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(50, 50, 900, 500);
+
+        /**************************************************************
+         * 🏷 TITLE
+         **************************************************************/
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 32px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Certificate of Mental Wellness", width / 2, 120);
+
+        /**************************************************************
+         * 👤 NAME
+         **************************************************************/
+        ctx.font = "20px Arial";
+        ctx.fillText(`This certifies ${data.name}`, width / 2, 170);
+
+        /**************************************************************
+         * 📊 SCORES
+         **************************************************************/
+        ctx.font = "18px Arial";
+
+        ctx.fillText(`Mental: ${data.mental}%`, 250, 250);
+        ctx.fillText(`Stress: ${data.stress}%`, 450, 250);
+        ctx.fillText(`Physical: ${data.physical}%`, 650, 250);
+
+        /**************************************************************
+         * 🎯 LEVEL
+         **************************************************************/
+        let color = "green";
+        if (data.level === "Moderate") color = "orange";
+        if (data.level === "Severe") color = "red";
+
+        ctx.fillStyle = color;
+        ctx.font = "bold 26px Arial";
+        ctx.fillText(data.level, width / 2, 320);
+
+        /**************************************************************
+         * 💡 SUGGESTIONS
+         **************************************************************/
+        ctx.fillStyle = "#000";
+        ctx.font = "16px Arial";
+
+        const suggestions = data.suggestions.split("\n");
+
+        suggestions.forEach((line, i) => {
+            ctx.fillText(line, width / 2, 380 + i * 25);
         });
 
-        const result = await apiResponse.json();
-        console.log("🧪 Image API Result:", result);
-
-        if (!result.url) {
-            throw new Error("Image API failed or rate limited");
-        }
-
         /**************************************************************
-         * 🔁 CONVERT IMAGE TO BASE64
+         * 🖼 EXPORT IMAGE
          **************************************************************/
-        const imageRes = await fetch(result.url);
-        const buffer = await imageRes.arrayBuffer();
+        const buffer = canvas.toBuffer("image/png");
+        const base64Image = buffer.toString("base64");
 
-        const base64Image = Buffer.from(buffer).toString("base64");
-
-        /**************************************************************
-         * 📤 SEND RESPONSE
-         **************************************************************/
         res.json({ image: base64Image });
 
     } catch (err) {
         console.error("❌ ERROR:", err);
-
-        res.status(500).json({
-            error: "Failed to generate certificate",
-            details: err.message
-        });
+        res.status(500).json({ error: "Failed to generate certificate" });
     }
 });
 
