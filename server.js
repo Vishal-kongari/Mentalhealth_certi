@@ -10,6 +10,8 @@ app.use(cors());
  * ✅ HEALTH CHECK ROUTE
  **************************************************************/
 app.get("/", (req, res) => {
+    /*adding corect code*/
+
     res.send("🚀 Mental Certificate API is running");
 });
 
